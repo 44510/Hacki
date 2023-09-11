@@ -76,7 +76,6 @@ class ItemsListView<T extends Item> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ListView child = ListView(
-      controller: scrollController,
       children: <Widget>[
         if (showOfflineBanner)
           const OfflineBanner(
@@ -140,7 +139,7 @@ class ItemsListView<T extends Item> extends StatelessWidget {
                               info.visibleFraction == 0) {
                             context
                                 .read<StoriesBloc>()
-                                .add(StoryRead(story: e));
+                                .add(StoryRead(story: e, isScrolledPast: true));
                           }
                         },
                         child: child,
@@ -294,6 +293,7 @@ class ItemsListView<T extends Item> extends StatelessWidget {
         },
       ),
       controller: refreshController,
+      scrollController: scrollController,
       onRefresh: onRefresh,
       onLoading: onLoadMore,
       child: child,

@@ -36,7 +36,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin, RouteAware {
+    with SingleTickerProviderStateMixin, RouteAware, WidgetsBindingObserver {
   late final TabController tabController;
   late final StreamSubscription<String> intentDataStreamSubscription;
   late final StreamSubscription<String?> notificationStreamSubscription;
@@ -68,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen>
     //   Constants.featureOpenStoryInWebView,
     //   Constants.featurePinToTop,
     // ]);
+    WidgetsBinding.instance.addObserver(this);
 
     ReceiveSharingIntent.getInitialText().then(onShareExtensionTapped);
 
@@ -123,7 +124,16 @@ class _HomeScreenState extends State<HomeScreen>
     intentDataStreamSubscription.cancel();
     notificationStreamSubscription.cancel();
     siriSuggestionStreamSubscription.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused) {
+      context.read<StoriesBloc>().updateReadIds();
+    }
   }
 
   @override
@@ -238,7 +248,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     if (storyMarkingMode.shouldDetectTapping) {
-      context.read<StoriesBloc>().add(StoryRead(story: story));
+      context
+          .read<StoriesBloc>()
+          .add(StoryRead(story: story, isScrolledPast: false));
     }
 
     if (Platform.isIOS) {

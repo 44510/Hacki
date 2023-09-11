@@ -52,8 +52,11 @@ class StoriesBloc extends Bloc<StoriesEvent, StoriesState> {
   final StoriesRepository _storiesRepository;
   final PreferenceRepository _preferenceRepository;
   final Logger _logger;
+  final List<int> readIds = <int>[];
+
   DeviceScreenType? deviceScreenType;
   StreamSubscription<PreferenceState>? _streamSubscription;
+
   static const int _smallPageSize = 10;
   static const int _largePageSize = 20;
   static const int _tabletSmallPageSize = 15;
@@ -136,11 +139,11 @@ class StoriesBloc extends Bloc<StoriesEvent, StoriesState> {
     if (state.statusByType[event.type] == Status.inProgress) return;
 
     emit(
-      state.copyWithStatusUpdated(
-        type: event.type,
-        to: Status.inProgress,
-      ),
+      state
+          .copyWithStatusUpdated(type: event.type, to: Status.inProgress)
+          .copyWith(readStoriesIds: <int>{...state.readStoriesIds, ...readIds}),
     );
+    readIds.clear();
 
     if (state.isOfflineReading) {
       emit(
@@ -156,12 +159,7 @@ class StoriesBloc extends Bloc<StoriesEvent, StoriesState> {
   }
 
   void onLoadMore(StoriesLoadMore event, Emitter<StoriesState> emit) {
-    emit(
-      state.copyWithStatusUpdated(
-        type: event.type,
-        to: Status.inProgress,
-      ),
-    );
+    emit(state.copyWithStatusUpdated(type: event.type, to: Status.inProgress));
 
     final int currentPage = state.currentPageByType[event.type]!;
     final int len = state.storyIdsByType[event.type]!.length;
@@ -460,11 +458,17 @@ class StoriesBloc extends Bloc<StoriesEvent, StoriesState> {
   ) async {
     unawaited(_preferenceRepository.updateHasRead(event.story.id));
 
-    emit(
-      state.copyWith(
-        readStoriesIds: <int>{...state.readStoriesIds, event.story.id},
-      ),
-    );
+    if (event.isScrolledPast) {
+      // If a story is being marked because it's scrolled past, we cache its id
+      // and update state only next time user refreshes.
+      readIds.add(event.story.id);
+    } else {
+      emit(
+        state.copyWith(
+          readStoriesIds: <int>{...state.readStoriesIds, event.story.id},
+        ),
+      );
+    }
   }
 
   Future<void> onClearAllReadStories(
@@ -472,7 +476,7 @@ class StoriesBloc extends Bloc<StoriesEvent, StoriesState> {
     Emitter<StoriesState> emit,
   ) async {
     unawaited(_preferenceRepository.clearAllReadStories());
-
+    readIds.clear();
     emit(
       state.copyWith(
         readStoriesIds: <int>{},
@@ -490,6 +494,17 @@ class StoriesBloc extends Bloc<StoriesEvent, StoriesState> {
     }
 
     return pageSize;
+  }
+
+  void updateReadIds() {
+    if (readIds.isNotEmpty) {
+      emit(
+        state.copyWith(
+          readStoriesIds: <int>{...state.readStoriesIds, ...readIds},
+        ),
+      );
+      readIds.clear();
+    }
   }
 
   @override

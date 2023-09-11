@@ -87,12 +87,19 @@ class StoryLoaded extends StoriesEvent {
 }
 
 class StoryRead extends StoriesEvent {
-  StoryRead({required this.story});
+  StoryRead({
+    required this.story,
+    required this.isScrolledPast,
+  });
 
   final Story story;
+  final bool isScrolledPast;
 
   @override
-  List<Object?> get props => <Object?>[story];
+  List<Object?> get props => <Object?>[
+        story,
+        isScrolledPast,
+      ];
 }
 
 class ClearAllReadStories extends StoriesEvent {
